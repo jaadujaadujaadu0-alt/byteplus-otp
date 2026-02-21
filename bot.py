@@ -6,17 +6,18 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
 from playwright.async_api import async_playwright
 
-# Initial import
+# Initial import of your separate accounts file
 import accounts
 
-load_dotenv()
-
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+# --- CONFIGURATION ---
+# PASTE YOUR TOKEN BELOW
+TELEGRAM_BOT_TOKEN = "8020390884:AAEkzEUBNy1gixWPX2WA_Xb32QvPuV-LyqE"
 SECURITY_URL = "https://console.byteplus.com/user/security/"
 
 async def run_instance(update: Update, username, password, inst_name):
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-setuid-sandbox"])
+        # Added --disable-dev-shm-usage for better stability on servers
+        browser = await p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"])
         context = await browser.new_context(viewport={'width': 1600, 'height': 1000})
         page = await context.new_page()
         
@@ -29,7 +30,7 @@ async def run_instance(update: Update, username, password, inst_name):
             await page.locator('button:has-text("Sign in")').first.evaluate("n => n.click()")
             await page.wait_for_url("**/console**", timeout=30000)
             
-            # Dashboard SS
+            # Dashboard Screenshot
             path_dash = f"dash_{inst_name}.png"
             await page.screenshot(path=path_dash)
             await update.message.reply_photo(photo=open(path_dash, "rb"), caption=f"1️⃣ [{inst_name}] Dashboard")
@@ -61,6 +62,7 @@ async def run_instance(update: Update, username, password, inst_name):
             # --- STEP 4: 2-MINUTE RESEND LOOP ---
             count = 1
             while True:
+                # 120 seconds = 2 minutes
                 await asyncio.sleep(120) 
                 resend_btn = page.locator('span:has-text("Resend code"), button:has-text("Resend")').first
                 await resend_btn.evaluate("n => n.click()")
@@ -77,22 +79,24 @@ async def run_instance(update: Update, username, password, inst_name):
             await browser.close()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Reload accounts file to catch any recent uploads
+    # Reload accounts.py to make sure we use the latest list
     importlib.reload(accounts)
     acc_list = accounts.ACCOUNTS
     
     await update.message.reply_text(f"🚀 Detected {len(acc_list)} accounts. Starting with 30s gaps...")
     
-    # DYNAMIC LOOP: Handles any number of accounts in the file
+    # This loop handles any number of accounts automatically
     for i, acc in enumerate(acc_list):
         inst_label = f"Inst_{i+1}"
+        # Start the browser instance in the background
         asyncio.create_task(run_instance(update, acc["user"], acc["pass"], inst_label))
         
-        # Only wait if there is another account to start
+        # Stagger the starts by 30 seconds
         if i < len(acc_list) - 1:
             await asyncio.sleep(30)
 
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Allows you to upload a new accounts.py file via Telegram
     if update.message.document.file_name == "accounts.py":
         file = await update.message.document.get_file()
         await file.download_to_drive("accounts.py")
@@ -100,9 +104,12 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("✅ `accounts.py` updated! Type /start to run all accounts.")
 
 def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    # Uses the token provided in the configuration section
+    app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
+    
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
+    
     print("🚀 Dynamic Bot running...")
     app.run_polling()
 
