@@ -10,7 +10,7 @@ import accounts
 
 # --- CONFIGURATION ---
 # Replace the string below with your actual Bot Token
-BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN_HERE"
+BOT_TOKEN = "8020390884:AAEkzEUBNy1gixWPX2WA_Xb32QvPuV-LyqE"
 SECURITY_URL = "https://console.byteplus.com/user/security/"
 
 async def run_instance(update: Update, username, password, inst_name):
