@@ -40,4 +40,6 @@ libxkbcommon0
 echo "Force installing Chromium via Playwright..."
 python3 -m playwright install --force chromium
 
+echo "env installing"
+python3 -m pip install python-dotenv
 echo "Setup Completed Successfully ✅"
